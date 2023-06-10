@@ -1,19 +1,23 @@
 var express = require("express");
 var app = express();
-const bcrypt = require('bcrypt');
-var jwt = require('jsonwebtoken');
+
 var cors = require('cors');
-var multer = require('multer'),
-  bodyParser = require('body-parser'),
-  path = require('path');
+var bodyParser = require('body-parser');
+var https = require("https");
+var fetch = require("node-fetch");
+
 var mongoose = require("mongoose");
 mongoose.connect("mongodb://localhost/productDB");
-var fs = require('fs');
-var product = require("./model/product.js");
-var user = require("./model/user.js");
 
-const https = require("https");
-const fetch = require("node-fetch");
+// Utils
+var { login, register, checkUserAndGenerateToken } = require("./utils/user");
+var { addProduct, updateProduct, deleteProduct, getProduct } = require("./utils/product");
+var { upload } = require("./utils/upload");
+var { createToken, verifySignin } = require("./utils/fido");
+
+// Iota
+import { createDIDRoute, addVMRoute } from "./utils/iota";
+
 require('dotenv').config();
 
 const apiurl = process.env.API_URL || "https://v4.passwordless.dev";
@@ -21,30 +25,30 @@ const API_SECRET = process.env.API_SECRET || "YOUR_API_SECRET"; // Replace with 
 const API_KEY = process.env.API_KEY || "YOUR_API_KEY"; // this will be injected to index.html
 
 // Functions
-import { createDID } from './iota/createDid'
+// import { createDID } from './iota/createDid'
 
-var dir = './uploads';
-var upload = multer({
-  storage: multer.diskStorage({
+// var dir = './uploads';
+// var upload = multer({
+//   storage: multer.diskStorage({
 
-    destination: function (req, file, callback) {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir);
-      }
-      callback(null, './uploads');
-    },
-    filename: function (req, file, callback) { callback(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname)); }
+//     destination: function (req, file, callback) {
+//       if (!fs.existsSync(dir)) {
+//         fs.mkdirSync(dir);
+//       }
+//       callback(null, './uploads');
+//     },
+//     filename: function (req, file, callback) { callback(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname)); }
 
-  }),
+//   }),
 
-  fileFilter: function (req, file, callback) {
-    var ext = path.extname(file.originalname)
-    if (ext !== '.png' && ext !== '.jpg' && ext !== '.jpeg') {
-      return callback(/*res.end('Only images are allowed')*/ null, false)
-    }
-    callback(null, true)
-  }
-});
+//   fileFilter: function (req, file, callback) {
+//     var ext = path.extname(file.originalname)
+//     if (ext !== '.png' && ext !== '.jpg' && ext !== '.jpeg') {
+//       return callback(/*res.end('Only images are allowed')*/ null, false)
+//     }
+//     callback(null, true)
+//   }
+// });
 
 app.use(cors());
 app.use(express.static('uploads'));
@@ -53,7 +57,7 @@ app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
   extended: false
 }));
 
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   next();
 });
@@ -87,446 +91,58 @@ app.use(function(req, res, next) {
 app.get("/", (req, res) => {
   res.status(200).json({
     status: true,
-    title: 'Apis'
+    title: 'APIs'
   });
 });
 
-/* login api */
+/*
+  API for password authentication
+*/
 app.post("/login", (req, res) => {
-  try {
-    if (req.body && req.body.username && req.body.password) {
-      user.find({ username: req.body.username }, (err, data) => {
-        if (data.length > 0) {
-
-          if (bcrypt.compareSync(data[0].password, req.body.password)) {
-            checkUserAndGenerateToken(data[0], req, res);
-          } else {
-
-            res.status(400).json({
-              errorMessage: 'Username or password is incorrect!',
-              status: false
-            });
-          }
-
-        } else {
-          res.status(400).json({
-            errorMessage: 'Username or password is incorrect!',
-            status: false
-          });
-        }
-      })
-    } else {
-      res.status(400).json({
-        errorMessage: 'Add proper parameter first!',
-        status: false
-      });
-    }
-  } catch (e) {
-    res.status(400).json({
-      errorMessage: 'Something went wrong!',
-      status: false
-    });
-  }
-
+  login(req, res);
 });
-
-/* register api */
 app.post("/register", (req, res) => {
-  try {
-    if (req.body && req.body.username && req.body.password) {
-
-      user.find({ username: req.body.username }, (err, data) => {
-
-        if (data.length == 0) {
-
-          let User = new user({
-            username: req.body.username,
-            password: req.body.password
-          });
-          User.save((err, data) => {
-            if (err) {
-              res.status(400).json({
-                errorMessage: err,
-                status: false
-              });
-            } else {
-              res.status(200).json({
-                status: true,
-                title: 'Registered Successfully.'
-              });
-            }
-          });
-
-        } else {
-          res.status(400).json({
-            errorMessage: `UserName ${req.body.username} Already Exist!`,
-            status: false
-          });
-        }
-
-      });
-
-    } else {
-      res.status(400).json({
-        errorMessage: 'Add proper parameter first!',
-        status: false
-      });
-    }
-  } catch (e) {
-    res.status(400).json({
-      errorMessage: 'Something went wrong!',
-      status: false
-    });
-  }
+  register(req, res);
 });
 
-function checkUserAndGenerateToken(data, req, res) {
-  jwt.sign({ user: data.username, id: data._id }, 'shhhhh11111', { expiresIn: '1d' }, (err, token) => {
-    if (err) {
-      res.status(400).json({
-        status: false,
-        errorMessage: err,
-      });
-    } else {
-      res.json({
-        message: 'Login Successfully.',
-        token: token,
-        status: true
-      });
-    }
-  });
-}
-
-/* Api to add Product */
-app.post("/add-product", upload.any(), (req, res) => {
-  try {
-    if (req.files && req.body && req.body.name && req.body.desc && req.body.price &&
-      req.body.discount) {
-    // if (req.body && req.body.name && req.body.desc && req.body.price &&
-    //     req.body.discount) {
-      console.log(req.files[0])
-      let new_product = new product();
-      new_product.name = req.body.name;
-      new_product.desc = req.body.desc;
-      new_product.price = req.body.price;
-      new_product.image = req.files[0].filename;
-      new_product.discount = req.body.discount;
-      new_product.user_id = req.user.id;
-      new_product.save((err, data) => {
-        if (err) {
-          console.log(err)
-          res.status(400).json({
-            errorMessage: err,
-            status: false
-          });
-        } else {
-          res.status(200).json({
-            status: true,
-            title: 'Product Added successfully.'
-          });
-        }
-      });
-
-    } else {
-      res.status(400).json({
-        errorMessage: 'Add proper parameter first!',
-        status: false
-      });
-    }
-  } catch (e) {
-    console.log(e)
-    res.status(400).json({
-      errorMessage: 'Something went wrong!',
-      status: false
-    });
-  }
-});
-
-/* Api to update Product */
-app.post("/update-product", upload.any(), (req, res) => {
-  try {
-    if (req.files && req.body && req.body.name && req.body.desc && req.body.price &&
-      req.body.id && req.body.discount) {
-
-      product.findById(req.body.id, (err, new_product) => {
-
-        // if file already exist than remove it
-        if (req.files && req.files[0] && req.files[0].filename && new_product.image) {
-          var path = `./uploads/${new_product.image}`;
-          fs.unlinkSync(path);
-        }
-
-        if (req.files && req.files[0] && req.files[0].filename) {
-          new_product.image = req.files[0].filename;
-        }
-        if (req.body.name) {
-          new_product.name = req.body.name;
-        }
-        if (req.body.desc) {
-          new_product.desc = req.body.desc;
-        }
-        if (req.body.price) {
-          new_product.price = req.body.price;
-        }
-        if (req.body.discount) {
-          new_product.discount = req.body.discount;
-        }
-
-        new_product.save((err, data) => {
-          if (err) {
-            res.status(400).json({
-              errorMessage: err,
-              status: false
-            });
-          } else {
-            res.status(200).json({
-              status: true,
-              title: 'Product updated.'
-            });
-          }
-        });
-
-      });
-
-    } else {
-      res.status(400).json({
-        errorMessage: 'Add proper parameter first!',
-        status: false
-      });
-    }
-  } catch (e) {
-    res.status(400).json({
-      errorMessage: 'Something went wrong!',
-      status: false
-    });
-  }
-});
-
-/* Api to delete Product */
-app.post("/delete-product", (req, res) => {
-  try {
-    if (req.body && req.body.id) {
-      product.findByIdAndUpdate(req.body.id, { is_delete: true }, { new: true }, (err, data) => {
-        if (data.is_delete) {
-          res.status(200).json({
-            status: true,
-            title: 'Product deleted.'
-          });
-        } else {
-          res.status(400).json({
-            errorMessage: err,
-            status: false
-          });
-        }
-      });
-    } else {
-      res.status(400).json({
-        errorMessage: 'Add proper parameter first!',
-        status: false
-      });
-    }
-  } catch (e) {
-    res.status(400).json({
-      errorMessage: 'Something went wrong!',
-      status: false
-    });
-  }
-});
-
-/*Api to get and search product with pagination and search by name*/
-app.get("/get-product", (req, res) => {
-  try {
-    var query = {};
-    query["$and"] = [];
-    query["$and"].push({
-      is_delete: false,
-      user_id: req.user.id
-    });
-    if (req.query && req.query.search) {
-      query["$and"].push({
-        name: { $regex: req.query.search }
-      });
-    }
-    var perPage = 5;
-    var page = req.query.page || 1;
-    product.find(query, { date: 1, name: 1, id: 1, desc: 1, price: 1, discount: 1, image: 1 })
-      .skip((perPage * page) - perPage).limit(perPage)
-      .then((data) => {
-        product.find(query).count()
-          .then((count) => {
-
-            if (data && data.length > 0) {
-              res.status(200).json({
-                status: true,
-                title: 'Product retrived.',
-                products: data,
-                current_page: page,
-                total: count,
-                pages: Math.ceil(count / perPage),
-              });
-            } else {
-              res.status(400).json({
-                errorMessage: 'There is no product!',
-                status: false
-              });
-            }
-
-          });
-
-      }).catch(err => {
-        res.status(400).json({
-          errorMessage: err.message || err,
-          status: false
-        });
-      });
-  } catch (e) {
-    res.status(400).json({
-      errorMessage: 'Something went wrong!',
-      status: false
-    });
-  }
-
-});
-
-//Route that handles signup logic
-async function createDIDAsync(name, password) {
-  // Create DID.
-  return createDID(name, password)
-}
-app.post('/create_did', (req, res) =>{
-  try {
-    if (req.body && req.body.userId) {
-      // user.find({ username: req.body.username }, (err, data) => {
-      //   if (data.length > 0) {
-
-          // if (bcrypt.compareSync(data[0].password, req.body.password)) {
-            console.log("Create DID")
-            createDIDAsync(req.body.userId, req.body.userId).then((isError) => {
-              if (isError) {
-                res.status(400).json({
-                  errorMessage: 'DID already exist!',
-                  status: false
-                });
-              }
-              else {
-                res.json({
-                  message: 'Create DID Successfully.',
-                  status: true
-                });
-              }
-            });
-          } else {
-
-            res.status(400).json({
-              errorMessage: 'Username or password is incorrect!',
-              status: false
-            });
-          }
-
-        // } else {
-        //   res.status(400).json({
-        //     errorMessage: 'Username or password is incorrect!',
-        //     status: false
-        //   });
-        // }
-  //     })
-  //   } else {
-  //     res.status(400).json({
-  //       errorMessage: 'Add proper parameter first!',
-  //       status: false
-  //     });
-  //   }
-  } catch (e) {
-    res.status(400).json({
-      errorMessage: 'Something went wrong!',
-      status: false
-    });
-  }
-})
-
+/*
+  API for passwordless authentication
+*/
 const agent = new https.Agent({
   rejectUnauthorized: false
 })
-
-/** 
- * Register - Get token from the passwordless API
- * 
- * The passwordless client side code needs a Token to register a passkey to a UserId.
- * The token is used by the Passwordless API to verify that this action is allowed for this user.
- * Your server can create this token by calling the Passwordless API with the ApiSecret.
- * This allows you to control the process, perhaps you only want to allow new users to register or only allow already signed in users to add a passkey to their own account.
- * Please see: https://docs.passwordless.dev/guide/get-started.html#build-a-registration-flow
- */
 app.get("/create-token", async (req, res) => {
-
-  const userId = getRandomInt(999999999);
-  const alias = req.query.alias;
-  const displayname = "Mr Guest";
-  // grab the userid from session, cookie etc
-  const payload = {
-    userId,
-    username: alias || displayname,
-    displayname,
-    aliases: alias ? [alias] : [] // We can also set aliases for the userid, so that signin can be initiated without knowing the userid
-  };
-
-  console.log("creating-token", apiurl);
-  // Send the username to the passwordless api to get a token
-  var response = await fetch(apiurl + "/register/token", {
-    method: "POST",
-    body: JSON.stringify(payload),
-    headers: { ApiSecret: API_SECRET, 'Content-Type': 'application/json'},
-    // agent
-  });
-
-  var responseData = await response.json();
-
-  console.log("passwordless api response", response.status, response.statusText, responseData);
-    
-  if(response.status == 200) {
-    console.log("received token: ", responseData.token);
-  } else {
-    // Handle or log any API error
-  }
-
-  res.status(response.status);
-  res.send(responseData);
+  await createToken(req, res);
 });
-
-/**
- * Sign in - Verify the sign in
- * 
- * The passwordless API handles all the cryptography and WebAuthn details so that you don't need to.
- * In order for you to verify that the sign in was successful and retrieve details such as the username, you need to verify the token that the passwordless client side code returned to you.
- * This is as easy as POST'ing it to together with your ApiSecret.
- * Please see: https://docs.passwordless.dev/guide/get-started.html#build-a-registration-flow
- */
 app.get("/verify-signin", async (req, res) => {
-  const token = { token: req.query.token };
-
-  console.log("Validating token", token);
-  const response = await fetch(apiurl + "/signin/verify", {
-    method: "POST",
-    body: JSON.stringify(token),
-    headers: { ApiSecret: API_SECRET, 'Content-Type': 'application/json' },
-    // agent
-  });
-
-  var body = await response.json();
-
-  if (body.success) {
-    console.log("Succesfully verfied signin for user", body);
-  } else {
-    console.warn("Sign in failed", body);
-  }
-  res.statusCode = response.status;
-  res.send(body);
+  await verifySignin(req, res);
 });
 
-function getRandomInt(max) {
-  return Math.floor(Math.random() * max);
-}
+/*
+  API for products
+*/
+app.post("/add-product", upload.any(), (req, res) => {
+  addProduct(req, res);
+});
+app.post("/update-product", upload.any(), (req, res) => {
+  updateProduct(req, res);
+});
+app.post("/delete-product", (req, res) => {
+  deleteProduct(req, res);
+});
+app.get("/get-product", (req, res) => {
+  getProduct(req, res);
+});
 
+/*
+  API for iota
+*/
+app.post('/create_did', (req, res) => {
+  createDIDRoute(req, res);
+})
+app.post('/add_vm', (req, res) => {
+  addVMRoute(req, res);
+})
 
 app.listen(2000, () => {
   console.log("Server is Runing On port 2000");

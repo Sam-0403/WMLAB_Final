@@ -66,11 +66,7 @@ class Dashboard extends Component {
     }).then((res) => {
       this.setState({ loading: false, products: res.data.products, pages: res.data.pages });
     }).catch((err) => {
-      // swal({
-      //   text: err.response.data.errorMessage,
-      //   icon: "error",
-      //   type: "error"
-      // });
+      console.log(err)
       this.setState({ loading: false, products: [], pages: 0 },()=>{});
     });
   }
@@ -236,34 +232,29 @@ class Dashboard extends Component {
 
   onTextChange = (e) => this.setState({ [e.target.name]: e.target.value });
 
-  verify_fido = async () => {
-    await handleSigninClick(localStorage.getItem("user_id")).then((user) => {
-      // console.log(user)
+  verifyFIDO = async () => {
+    let isVerified = await handleSigninClick(localStorage.getItem("user_id")).then((user) => {
+      console.log(user)
       // localStorage.setItem('token', user.tokenId);
       // localStorage.setItem('user_id', user.userId);
       // this.props.navigate("/dashboard");
       return true;
-    }).catch((err) => {
-    }) 
-    return false;
+    })
+    .catch((err) => {
+      console.log(err)
+      return false;
+    })
+    return isVerified;
   }
 
   handleCreateDID = async () => {
-    const pwd = bcrypt.hashSync(this.state.password, salt);
-
-    let passed =  await this.verify_fido();
+    let passed =  await this.verifyFIDO(this.state.username);
     console.log(passed)
     if (passed) {
       console.log("Create DID")
       axios.post('http://localhost:2000/create_did', {
         userId: localStorage.getItem("user_id"),
-        // username: this.state.username,
-        // password: this.state.password,
       }).then((res) => {
-        // localStorage.setItem('token', res.data.token);
-        // localStorage.setItem('user_id', res.data.id);
-        // // this.props.history.push('/dashboard');
-        // this.props.navigate("/dashboard");
         swal({
           text: res.data.message,
           icon: "success",
@@ -279,7 +270,31 @@ class Dashboard extends Component {
         }
       });
     }
-    
+  }
+
+  handleAddingVM = async () => {
+    let passed =  await this.verifyFIDO(this.state.username);
+    console.log(passed)
+    if (passed) {
+      console.log("Adding VM")
+      axios.post('http://localhost:2000/add_vm', {
+        userId: localStorage.getItem("user_id"),
+      }).then((res) => {
+        swal({
+          text: res.data.message,
+          icon: "success",
+          type: "success"
+        });
+      }).catch((err) => {
+        if (err.response && err.response.data && err.response.data.errorMessage) {
+          swal({
+            text: err.response.data.errorMessage,
+            icon: "error",
+            type: "error"
+          });
+        }
+      });
+    }
   }
 
   render() {
@@ -288,6 +303,39 @@ class Dashboard extends Component {
         {this.state.loading && <LinearProgress size={40} />}
         <div>
           <h2>Dashboard</h2>
+        </div>
+        
+        <div>
+        <Button
+          className="button_style"
+          variant="contained"
+          color="primary"
+          size="small"
+          onClick={this.handleAddingVM}
+        >
+          Add VM
+        </Button>
+        <Button
+          className="button_style"
+          variant="contained"
+          color="primary"
+          size="small"
+          onClick={this.handleCreateDID}
+        >
+          Create VC
+        </Button>
+        <Button
+          className="button_style"
+          variant="contained"
+          color="secondary"
+          size="small"
+          onClick={this.handleCreateDID}
+        >
+          Rent Car
+        </Button>
+        </div>
+        <br></br>
+        <div>
           <Button
             className="button_style"
             variant="contained"
@@ -296,15 +344,6 @@ class Dashboard extends Component {
             onClick={this.handleProductOpen}
           >
             Add Product
-          </Button>
-          <Button
-            className="button_style"
-            variant="contained"
-            color="primary"
-            size="small"
-            onClick={this.handleCreateDID}
-          >
-            Create DID
           </Button>
           <Button
             className="button_style"

@@ -12,12 +12,19 @@ async function addVerificationMethod(
   password: string,
   fragment: string
 ) {
+  console.log(name, password, fragment)
   const account: Account = await loadDID(name, password)
+  console.log(account)
 
-  await account.createMethod({
-    content: MethodContent.GenerateEd25519(),
-    fragment,
-  })
+  try{
+    await account.createMethod({
+      content: MethodContent.GenerateEd25519(),
+      fragment,
+    })
+  }
+  catch(err){
+    console.log(err)
+  }
 
   console.log('Creating Method Successful!')
   console.log(`Explorer Url:`, ExplorerUrl.mainnet().resolverUrl(account.did()))

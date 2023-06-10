@@ -3,7 +3,7 @@ import swal from "sweetalert";
 import { Button, TextField, Link } from "@material-ui/core";
 import { withRouter } from "./utils";
 import handleSigninClick from "./client-signin";
-import handleRegisterClick from "./client-register";
+
 const axios = require("axios");
 const bcrypt = require("bcryptjs");
 var salt = bcrypt.genSaltSync(10);
@@ -40,17 +40,18 @@ class Login extends React.Component {
       }
     });
   }
-  
-  login_fido = async () => {
-    await handleSigninClick(this.state.username).then((user) => {
-      console.log(user)
-      localStorage.setItem('token', user.tokenId);
-      localStorage.setItem('user_id', user.userId);
-      this.props.navigate("/dashboard");
-    }).catch((err) => {
 
-    })
-    
+  loginFIDO = async () => {
+    await handleSigninClick(this.state.username)
+      .then((user) => {
+        console.log(user)
+        localStorage.setItem('token', user.tokenId);
+        localStorage.setItem('user_id', user.userId);
+        this.props.navigate("/dashboard");
+      })
+      .catch((err) => {
+        console.log(err)
+      })
   }
 
   render() {
@@ -88,7 +89,7 @@ class Login extends React.Component {
             variant="contained"
             color="primary"
             size="small"
-            disabled={this.state.username == '' && this.state.password == ''}
+            disabled={this.state.username == '' || this.state.password == ''}
             onClick={this.login}
           >
             Login
@@ -98,15 +99,13 @@ class Login extends React.Component {
             variant="contained"
             color="primary"
             size="small"
-            disabled={this.state.username == '' && this.state.password == ''}
-            // onClick={() => handleSigninClick(this.state.username)}
-            onClick={this.login_fido}
+            disabled={this.state.username == ''}
+            onClick={this.loginFIDO}
           >
-            FIDO Login
+            Login (FIDO)
           </Button>
-           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
           <Link
-            // href="/register"
             component="button"
             style={{ fontFamily: "inherit", fontSize: "inherit" }}
             onClick={() => {

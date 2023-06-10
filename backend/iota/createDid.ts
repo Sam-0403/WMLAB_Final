@@ -44,4 +44,5 @@ async function createDID(name: string, password: string) {
   return false
 }
 
-export { createDID }
+export { createDID };
+// export default createDID
