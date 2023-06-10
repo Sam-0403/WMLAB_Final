@@ -24,10 +24,12 @@ async function addVerificationMethod(
   }
   catch(err){
     console.log(err)
+    return true
   }
 
   console.log('Creating Method Successful!')
   console.log(`Explorer Url:`, ExplorerUrl.mainnet().resolverUrl(account.did()))
+  return false
 }
 
 export { addVerificationMethod }

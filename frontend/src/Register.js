@@ -42,39 +42,66 @@ class Register extends React.Component {
   }
 
   registerFIDO = async () => {
-    // Step1. Register
+    
     var username = this.state.username
+    console.log(username)
+    
+
     await handleRegisterClick(username)
       .then(async () => {
-        // Step2. Sign
+        // Step1. Sign
         await handleSigninClick(username)
           .then((user) => {
             console.log(user)
             localStorage.setItem('token', user.tokenId);
-            localStorage.setItem('user_id', user.userId);
-            this.props.navigate("/dashboard");
+            // localStorage.setItem('user_id', user.userId);
+            localStorage.setItem('username', username);
+            
+            // Step2. Register
+            axios.post('http://localhost:2000/register', {
+              username: username,
+              password: username,
+              userId: user.userId,
+            })
+            .then((res) => {
+              console.log("In")
+              console.log(res)
+              var user = res.data.user;
+              console.log(user)
+
+              localStorage.setItem('user_id', user._id);
+              // Step3. Create DID
+              axios.post('http://localhost:2000/create_did', {
+                userId: user._id,
+              }).then((res) => {
+                swal({
+                  text: res.data.message,
+                  icon: "success",
+                  type: "success"
+                });
+                this.props.navigate("/dashboard");
+              }).catch((err) => {
+                if (err.response && err.response.data && err.response.data.errorMessage) {
+                  swal({
+                    text: err.response.data.errorMessage,
+                    icon: "error",
+                    type: "error"
+                  });
+                }
+              });
+            })
+            .catch((err) => {
+              swal({
+                text: err.response.data.errorMessage,
+                icon: "error",
+                type: "error"
+              });
+              return;
+            });
           })
           .catch((err) => {
             console.log(err)
           })
-        // Step3. Create DID
-        axios.post('http://localhost:2000/create_did', {
-          userId: localStorage.getItem("user_id"),
-        }).then((res) => {
-          swal({
-            text: res.data.message,
-            icon: "success",
-            type: "success"
-          });
-        }).catch((err) => {
-          if (err.response && err.response.data && err.response.data.errorMessage) {
-            swal({
-              text: err.response.data.errorMessage,
-              icon: "error",
-              type: "error"
-            });
-          }
-        });
       })
       .catch((err) => {
         console.log(err)

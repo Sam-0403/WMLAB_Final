@@ -26,6 +26,7 @@ class Login extends React.Component {
       username: this.state.username,
       password: pwd,
     }).then((res) => {
+      console.log(res.data)
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user_id', res.data.id);
       // this.props.history.push('/dashboard');
@@ -42,12 +43,22 @@ class Login extends React.Component {
   }
 
   loginFIDO = async () => {
-    await handleSigninClick(this.state.username)
+    var username = this.state.username
+    await handleSigninClick(username)
       .then((user) => {
         console.log(user)
         localStorage.setItem('token', user.tokenId);
-        localStorage.setItem('user_id', user.userId);
-        this.props.navigate("/dashboard");
+        // localStorage.setItem('user_id', user.userId);
+        localStorage.setItem('username', username);
+        axios.post('http://localhost:2000/find-user', {
+          username: this.state.username,
+        }).then((res) => {
+          var user = res.data.user
+          console.log(user)
+          localStorage.setItem('user_id', user._id);
+
+          this.props.navigate("/dashboard");
+        })
       })
       .catch((err) => {
         console.log(err)

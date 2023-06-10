@@ -34,12 +34,17 @@ class Dashboard extends Component {
       pages: 0,
       loading: false,
       username: '',
-      password: ''
+      password: '',
+
+      openVCModal: false,
+      userVC: ''
     };
   }
 
   componentDidMount = () => {
     let token = localStorage.getItem('token');
+    let username = localStorage.getItem('username');
+    this.setState({ username: username });
     if (!token) {
       // this.props.history.push('/login');
       this.props.navigate("/login");
@@ -233,7 +238,7 @@ class Dashboard extends Component {
   onTextChange = (e) => this.setState({ [e.target.name]: e.target.value });
 
   verifyFIDO = async () => {
-    let isVerified = await handleSigninClick(localStorage.getItem("user_id")).then((user) => {
+    let isVerified = await handleSigninClick(this.state.username).then((user) => {
       console.log(user)
       // localStorage.setItem('token', user.tokenId);
       // localStorage.setItem('user_id', user.userId);
@@ -248,7 +253,7 @@ class Dashboard extends Component {
   }
 
   handleCreateDID = async () => {
-    let passed =  await this.verifyFIDO(this.state.username);
+    let passed =  await this.verifyFIDO();
     console.log(passed)
     if (passed) {
       console.log("Create DID")
@@ -274,11 +279,43 @@ class Dashboard extends Component {
 
   handleAddingVM = async () => {
     let passed =  await this.verifyFIDO(this.state.username);
+
+    if (passed) {
+      axios.post('http://localhost:2000/find-user', {
+        username: this.state.username,
+      }).then((res) => {
+        var user = res.data.user
+        console.log(user)
+    
+      console.log("Adding VM")
+      axios.post('http://localhost:2000/add_vm', {
+        user: localStorage.getItem("user_id"),
+      }).then((res) => {
+        swal({
+          text: res.data.message,
+          icon: "success",
+          type: "success"
+        });
+      }).catch((err) => {
+        if (err.response && err.response.data && err.response.data.errorMessage) {
+          swal({
+            text: err.response.data.errorMessage,
+            icon: "error",
+            type: "error"
+          });
+        }
+      });
+      })
+    }
+  }
+
+  handleAddingRevoke = async () => {
+    let passed = await this.verifyFIDO(this.state.username);
     console.log(passed)
     if (passed) {
       console.log("Adding VM")
-      axios.post('http://localhost:2000/add_vm', {
-        userId: localStorage.getItem("user_id"),
+      axios.post('http://localhost:2000/add_revoke', {
+        user: localStorage.getItem("user_id"),
       }).then((res) => {
         swal({
           text: res.data.message,
@@ -297,12 +334,107 @@ class Dashboard extends Component {
     }
   }
 
+  handleVCOpen = () => {
+    this.setState({
+      openVCModal: true,
+      userVC: '',
+    });
+  };
+  
+  handleVCClose = () => {
+    this.setState({ openVCModal: false });
+  };
+
+  handleAddingVC = async () => {
+    let passed = await this.verifyFIDO(this.state.username);
+    console.log(passed)
+    
+    if (passed) {
+      // Step1. Finding UserVC
+      axios.post('http://localhost:2000/find-user', {
+        username: this.state.userVC,
+      }).then((res) => {
+        var userVC = res.data.user
+        console.log(userVC)
+        
+        // Step2. Adding VC
+        axios.post('http://localhost:2000/create_vc', {
+          userVC: userVC._id,
+          user: localStorage.getItem("user_id"),
+          userVCID: Number(userVC.userId),
+        }).then((res) => {
+          swal({
+            text: res.data.message,
+            icon: "success",
+            type: "success"
+          });
+          this.handleVCClose()
+        })
+        .catch((err) => {
+          if (err.response && err.response.data && err.response.data.errorMessage) {
+            swal({
+              text: err.response.data.errorMessage,
+              icon: "error",
+              type: "error"
+            });
+          }
+        });
+
+      }).catch((err) => {
+        console.log(err)
+      })
+    }
+  }
+
+  handleAddingVP = async () => {
+    let passed = await this.verifyFIDO(this.state.username);
+    console.log(passed)
+    
+    if (passed) {
+      // Step1. Adding VP
+      axios.post('http://localhost:2000/create_vp', {
+        user: localStorage.getItem("user_id"),
+      }).then((res) => {
+        swal({
+          text: res.data.message,
+          icon: "success",
+          type: "success"
+        });
+
+        // Step2. Verify VP
+        axios.post('http://localhost:2000/check_vp', {
+          user: localStorage.getItem("user_id"),
+        }).then((res) => {
+          swal({
+            text: res.data.message,
+            icon: "success",
+            type: "success"
+          })
+        })
+        .catch((err) => {
+          if (err.response && err.response.data && err.response.data.errorMessage) {
+            swal({
+              text: err.response.data.errorMessage,
+              icon: "error",
+              type: "error"
+            });
+          }
+        });
+
+      })
+      .catch((err) => {
+        console.log(err)
+      })
+
+    }
+  }
+
   render() {
     return (
       <div>
         {this.state.loading && <LinearProgress size={40} />}
         <div>
-          <h2>Dashboard</h2>
+          <h2>Dashboard -- {this.state.username}</h2>
         </div>
         
         <div>
@@ -320,7 +452,16 @@ class Dashboard extends Component {
           variant="contained"
           color="primary"
           size="small"
-          onClick={this.handleCreateDID}
+          onClick={this.handleAddingRevoke}
+        >
+          Create Revoke
+        </Button>
+        <Button
+          className="button_style"
+          variant="contained"
+          color="primary"
+          size="small"
+          onClick={this.handleVCOpen}
         >
           Create VC
         </Button>
@@ -329,7 +470,7 @@ class Dashboard extends Component {
           variant="contained"
           color="secondary"
           size="small"
-          onClick={this.handleCreateDID}
+          onClick={this.handleAddingVP}
         >
           Rent Car
         </Button>
@@ -514,9 +655,43 @@ class Dashboard extends Component {
           </DialogActions>
         </Dialog>
 
-        <br />
+        {/* Add VC */}
+        <Dialog
+          open={this.state.openVCModal}
+          onClose={this.handleVCClose}
+          aria-labelledby="alert-dialog-title"
+          aria-describedby="alert-dialog-description"
+        >
+          <DialogTitle id="alert-dialog-title">Add Product</DialogTitle>
+          <DialogContent>
+            <TextField
+              id="standard-basic"
+              type="text"
+              autoComplete="off"
+              name="userVC"
+              value={this.state.userVC}
+              onChange={this.onChange}
+              placeholder="User Name"
+              required
+            /><br />
+            &nbsp;
+          </DialogContent>
 
-        <div>
+          <DialogActions>
+            <Button onClick={this.handleVCClose} color="primary">
+              Cancel
+            </Button>
+            <Button
+              disabled={this.state.userVC == ''}
+              onClick={this.handleAddingVC} color="primary" autoFocus>
+              Add VC
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* <br /> */}
+
+        {/* <div>
           <TextField
             id="standard-basic"
             type="search"
@@ -539,7 +714,7 @@ class Dashboard extends Component {
             placeholder="Enter your password"
             required
           />
-        </div>
+        </div> */}
 
         <br />
 

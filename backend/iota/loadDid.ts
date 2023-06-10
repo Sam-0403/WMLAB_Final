@@ -15,7 +15,8 @@ async function loadDID(
   name: string,
   password: string,
   log = false
-): Promise<Account> {
+): Promise<Account> 
+{
   // Build Stronhold.
   const strongholdPath = path.join('stronghold-files', name + '.hodl')
   const stronghold = await Stronghold.build(strongholdPath, password, true)

@@ -1,6 +1,10 @@
 passwordless/node_modules
 test/node_modules
+
 backend/stronghold-files
+backend/credentials
+backend/presentations
+
 backend/.env
 frontend/.env
 passwordless/.env

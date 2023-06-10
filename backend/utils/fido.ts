@@ -1,3 +1,5 @@
+var {registerUser} = require("../utils/user")
+
 require('dotenv').config();
 
 const apiurl = process.env.API_URL || "https://v4.passwordless.dev";

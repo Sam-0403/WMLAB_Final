@@ -1,3 +1,7 @@
 {   
-    "ignore": ["stronghold-files/*"] 
+    "ignore": [
+        "stronghold-files/*", 
+        "credentials/*",
+        "presentations/*"
+    ] 
 }

@@ -2,6 +2,8 @@ var upload = require("../utils/upload");
 var product = require("../model/product.js");
 var fs = require('fs');
 
+var userId = "648492b7db9763c496c18797";
+
 /* Api to add Product */
 function addProduct(req, res) {
     try {
@@ -16,7 +18,8 @@ function addProduct(req, res) {
             new_product.price = req.body.price;
             new_product.image = req.files[0].filename;
             new_product.discount = req.body.discount;
-            new_product.user_id = req.user.id;
+            // new_product.user_id = req.user.id;
+            new_product.user_id = userId;
             new_product.save((err, data) => {
                 if (err) {
                     console.log(err)
@@ -144,7 +147,7 @@ function getProduct(req, res) {
         query["$and"] = [];
         query["$and"].push({
             is_delete: false,
-            user_id: req.user.id
+            user_id: userId
         });
         if (req.query && req.query.search) {
             query["$and"].push({

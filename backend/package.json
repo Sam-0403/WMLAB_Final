@@ -38,7 +38,9 @@
   },
   "nodemonConfig": {
     "ignore": [
-      "stronghold-files/*"
+      "stronghold-files/*",
+      "credentials/*",
+      "presentations/*"
     ]
   }
 }

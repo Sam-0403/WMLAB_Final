@@ -10,13 +10,13 @@ var mongoose = require("mongoose");
 mongoose.connect("mongodb://localhost/productDB");
 
 // Utils
-var { login, register, checkUserAndGenerateToken } = require("./utils/user");
+var { login, register, findUser } = require("./utils/user");
 var { addProduct, updateProduct, deleteProduct, getProduct } = require("./utils/product");
 var { upload } = require("./utils/upload");
 var { createToken, verifySignin } = require("./utils/fido");
 
 // Iota
-import { createDIDRoute, addVMRoute } from "./utils/iota";
+import { createDIDRoute, addVMRoute, addRevokeRoute, createVCRoute, createVPRoute, checkVPRoute } from "./utils/iota";
 
 require('dotenv').config();
 
@@ -104,6 +104,9 @@ app.post("/login", (req, res) => {
 app.post("/register", (req, res) => {
   register(req, res);
 });
+app.post("/find-user", (req, res) => {
+  findUser(req, res);
+});
 
 /*
   API for passwordless authentication
@@ -142,6 +145,18 @@ app.post('/create_did', (req, res) => {
 })
 app.post('/add_vm', (req, res) => {
   addVMRoute(req, res);
+})
+app.post('/add_revoke', (req, res) => {
+  addRevokeRoute(req, res);
+})
+app.post('/create_vc', (req, res) => {
+  createVCRoute(req, res);
+})
+app.post('/create_vp', (req, res) => {
+  createVPRoute(req, res);
+})
+app.post('/check_vp', (req, res) => {
+  checkVPRoute(req, res);
 })
 
 app.listen(2000, () => {
