@@ -202,7 +202,9 @@ app.post("/add-product", upload.any(), (req, res) => {
   try {
     if (req.files && req.body && req.body.name && req.body.desc && req.body.price &&
       req.body.discount) {
-
+    // if (req.body && req.body.name && req.body.desc && req.body.price &&
+    //     req.body.discount) {
+      console.log(req.files[0])
       let new_product = new product();
       new_product.name = req.body.name;
       new_product.desc = req.body.desc;
@@ -212,6 +214,7 @@ app.post("/add-product", upload.any(), (req, res) => {
       new_product.user_id = req.user.id;
       new_product.save((err, data) => {
         if (err) {
+          console.log(err)
           res.status(400).json({
             errorMessage: err,
             status: false
@@ -231,6 +234,7 @@ app.post("/add-product", upload.any(), (req, res) => {
       });
     }
   } catch (e) {
+    console.log(e)
     res.status(400).json({
       errorMessage: 'Something went wrong!',
       status: false
