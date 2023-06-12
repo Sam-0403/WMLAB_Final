@@ -2,15 +2,22 @@ import React, { Component } from 'react';
 import {
   Button, TextField, Dialog, DialogActions, LinearProgress,
   DialogTitle, DialogContent, TableBody, Table,
-  TableContainer, TableHead, TableRow, TableCell
+  TableContainer, TableHead, TableRow, TableCell,
+  Card, Box, Avatar, Typography, IconButton, Divider, Chip, Switch
 } from '@material-ui/core';
+import { Edit, LocationOn } from '@material-ui/icons'
+
 import { Pagination } from '@material-ui/lab';
 import swal from 'sweetalert';
 import { withRouter } from './utils';
+
 import handleSigninClick from "./client-signin";
 import handleRegisterClick from "./client-register";
+import BLEconnect from "../src/socket";
+
 const axios = require('axios');
 const bcrypt = require("bcryptjs");
+
 
 var salt = bcrypt.genSaltSync(10);
 
@@ -35,6 +42,7 @@ class Dashboard extends Component {
       loading: false,
       username: '',
       password: '',
+      isIssuer: false,
 
       openVCModal: false,
       userVC: ''
@@ -45,6 +53,7 @@ class Dashboard extends Component {
     let token = localStorage.getItem('token');
     let username = localStorage.getItem('username');
     this.setState({ username: username });
+    this.setState({ isIssuer: username.indexOf("Issuer")>-1 });
     if (!token) {
       // this.props.history.push('/login');
       this.props.navigate("/login");
@@ -56,7 +65,7 @@ class Dashboard extends Component {
   }
 
   getProduct = () => {
-    
+
     this.setState({ loading: true });
 
     let data = '?';
@@ -72,7 +81,7 @@ class Dashboard extends Component {
       this.setState({ loading: false, products: res.data.products, pages: res.data.pages });
     }).catch((err) => {
       console.log(err)
-      this.setState({ loading: false, products: [], pages: 0 },()=>{});
+      this.setState({ loading: false, products: [], pages: 0 }, () => { });
     });
   }
 
@@ -121,11 +130,11 @@ class Dashboard extends Component {
       this.setState({ fileName: e.target.files[0].name }, () => { });
     }
     this.setState({ [e.target.name]: e.target.value }, () => { });
-    if (e.target.name == 'search') {
-      this.setState({ page: 1 }, () => {
-        this.getProduct();
-      });
-    }
+    // if (e.target.name == 'search') {
+    //   this.setState({ page: 1 }, () => {
+    //     this.getProduct();
+    //   });
+    // }
   };
 
   addProduct = () => {
@@ -245,15 +254,15 @@ class Dashboard extends Component {
       // this.props.navigate("/dashboard");
       return true;
     })
-    .catch((err) => {
-      console.log(err)
-      return false;
-    })
+      .catch((err) => {
+        console.log(err)
+        return false;
+      })
     return isVerified;
   }
 
   handleCreateDID = async () => {
-    let passed =  await this.verifyFIDO();
+    let passed = await this.verifyFIDO();
     console.log(passed)
     if (passed) {
       console.log("Create DID")
@@ -278,7 +287,7 @@ class Dashboard extends Component {
   }
 
   handleAddingVM = async () => {
-    let passed =  await this.verifyFIDO(this.state.username);
+    let passed = await this.verifyFIDO(this.state.username);
 
     if (passed) {
       axios.post('http://localhost:2000/find-user', {
@@ -286,25 +295,25 @@ class Dashboard extends Component {
       }).then((res) => {
         var user = res.data.user
         console.log(user)
-    
-      console.log("Adding VM")
-      axios.post('http://localhost:2000/add_vm', {
-        user: localStorage.getItem("user_id"),
-      }).then((res) => {
-        swal({
-          text: res.data.message,
-          icon: "success",
-          type: "success"
-        });
-      }).catch((err) => {
-        if (err.response && err.response.data && err.response.data.errorMessage) {
+
+        console.log("Adding VM")
+        axios.post('http://localhost:2000/add_vm', {
+          user: localStorage.getItem("user_id"),
+        }).then((res) => {
           swal({
-            text: err.response.data.errorMessage,
-            icon: "error",
-            type: "error"
+            text: res.data.message,
+            icon: "success",
+            type: "success"
           });
-        }
-      });
+        }).catch((err) => {
+          if (err.response && err.response.data && err.response.data.errorMessage) {
+            swal({
+              text: err.response.data.errorMessage,
+              icon: "error",
+              type: "error"
+            });
+          }
+        });
       })
     }
   }
@@ -340,7 +349,7 @@ class Dashboard extends Component {
       userVC: '',
     });
   };
-  
+
   handleVCClose = () => {
     this.setState({ openVCModal: false });
   };
@@ -348,7 +357,7 @@ class Dashboard extends Component {
   handleAddingVC = async () => {
     let passed = await this.verifyFIDO(this.state.username);
     console.log(passed)
-    
+
     if (passed) {
       // Step1. Finding UserVC
       axios.post('http://localhost:2000/find-user', {
@@ -356,7 +365,7 @@ class Dashboard extends Component {
       }).then((res) => {
         var userVC = res.data.user
         console.log(userVC)
-        
+
         // Step2. Adding VC
         axios.post('http://localhost:2000/create_vc', {
           userVC: userVC._id,
@@ -370,15 +379,15 @@ class Dashboard extends Component {
           });
           this.handleVCClose()
         })
-        .catch((err) => {
-          if (err.response && err.response.data && err.response.data.errorMessage) {
-            swal({
-              text: err.response.data.errorMessage,
-              icon: "error",
-              type: "error"
-            });
-          }
-        });
+          .catch((err) => {
+            if (err.response && err.response.data && err.response.data.errorMessage) {
+              swal({
+                text: err.response.data.errorMessage,
+                icon: "error",
+                type: "error"
+              });
+            }
+          });
 
       }).catch((err) => {
         console.log(err)
@@ -386,10 +395,10 @@ class Dashboard extends Component {
     }
   }
 
-  handleAddingVP = async () => {
+  handleAddingVP = async (car) => {
     let passed = await this.verifyFIDO(this.state.username);
     console.log(passed)
-    
+
     if (passed) {
       // Step1. Adding VP
       axios.post('http://localhost:2000/create_vp', {
@@ -410,78 +419,81 @@ class Dashboard extends Component {
             icon: "success",
             type: "success"
           })
+
+          localStorage.setItem("car", JSON.stringify(car))
+          var username = localStorage.getItem("username")
+          var user_id = localStorage.getItem("user_id")
+          // row.name, row.desc, row.price, row.discount
+          window.location.assign(`http://localhost:5173/?username=${username}&id=${user_id}&name=${car.name}&desc=${car.desc}&price=${car.price}`);
         })
-        .catch((err) => {
-          if (err.response && err.response.data && err.response.data.errorMessage) {
-            swal({
-              text: err.response.data.errorMessage,
-              icon: "error",
-              type: "error"
-            });
-          }
-        });
+          .catch((err) => {
+            if (err.response && err.response.data && err.response.data.errorMessage) {
+              swal({
+                text: err.response.data.errorMessage,
+                icon: "error",
+                type: "error"
+              });
+            }
+          });
 
       })
       .catch((err) => {
         console.log(err)
+        swal({
+          text: err.response.data.errorMessage,
+          icon: "error",
+          type: "error"
+        });
       })
-
     }
+    return true
   }
 
   render() {
     return (
       <div>
+        <iframe style={{display: "none"}} src="http://localhost:5173" id="ifr"></iframe>
         {this.state.loading && <LinearProgress size={40} />}
         <div>
           <h2>Dashboard -- {this.state.username}</h2>
         </div>
-        
-        <div>
-        <Button
-          className="button_style"
-          variant="contained"
-          color="primary"
-          size="small"
-          onClick={this.handleAddingVM}
-        >
-          Add VM
-        </Button>
-        <Button
-          className="button_style"
-          variant="contained"
-          color="primary"
-          size="small"
-          onClick={this.handleAddingRevoke}
-        >
-          Create Revoke
-        </Button>
-        <Button
-          className="button_style"
-          variant="contained"
-          color="primary"
-          size="small"
-          onClick={this.handleVCOpen}
-        >
-          Create VC
-        </Button>
-        <Button
-          className="button_style"
-          variant="contained"
-          color="secondary"
-          size="small"
-          onClick={this.handleAddingVP}
-        >
-          Rent Car
-        </Button>
-        </div>
-        <br></br>
-        <div>
+
+        <div>        
           <Button
             className="button_style"
             variant="contained"
             color="primary"
             size="small"
+            onClick={this.handleAddingVM}
+          >
+            Add VM
+          </Button>
+          <Button
+            className="button_style"
+            variant="contained"
+            color="primary"
+            size="small"
+            disabled={!this.state.isIssuer}
+            onClick={this.handleAddingRevoke}
+          >
+            Create Revoke
+          </Button>
+          <Button
+            className="button_style"
+            variant="contained"
+            color="primary"
+            size="small"
+            disabled={!this.state.isIssuer}
+            onClick={this.handleVCOpen}
+          >
+            Create VC
+          </Button>
+          <Button
+            className="button_style"
+            variant="contained"
+            color="primary"
+            size="small"
+            disabled={!this.state.isIssuer}
             onClick={this.handleProductOpen}
           >
             Add Product
@@ -549,7 +561,7 @@ class Dashboard extends Component {
               variant="contained"
               component="label"
             > Upload
-            <input
+              <input
                 type="file"
                 accept="image/*"
                 name="file"
@@ -628,7 +640,7 @@ class Dashboard extends Component {
               variant="contained"
               component="label"
             > Upload
-            <input
+              <input
                 type="file"
                 accept="image/*"
                 name="file"
@@ -718,60 +730,117 @@ class Dashboard extends Component {
 
         <br />
 
-        <TableContainer>
+        <TableContainer style={{width: "80%", padding: "2% 10%"}}>
           <TextField
+            style={{width: "30%"}}
             id="standard-basic"
             type="search"
             autoComplete="off"
             name="search"
             value={this.state.search}
             onChange={this.onChange}
+            onKeyDown={(e) => {
+              if(e.keyCode == 13){
+                this.setState({ page: 1 }, () => {
+                  this.getProduct();
+                });
+              }
+            }}
             placeholder="Search by product name"
             required
           />
-          
-          <Table aria-label="simple table">
+          <Table aria-label="simple table" style={{ tableLayout: 'fixed' }}>
             <TableHead>
               <TableRow>
-                <TableCell align="center">Name</TableCell>
+                {/* <TableCell align="center">Name</TableCell>
                 <TableCell align="center">Image</TableCell>
                 <TableCell align="center">Description</TableCell>
                 <TableCell align="center">Price</TableCell>
                 <TableCell align="center">Discount</TableCell>
-                <TableCell align="center">Action</TableCell>
+                <TableCell align="center">Action</TableCell> */}
+                <TableCell align="center">Item1</TableCell>
+                <TableCell align="center">Item2</TableCell>
+                <TableCell align="center">Item3</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {this.state.products.map((row) => (
-                <TableRow key={row.name}>
-                  <TableCell align="center" component="th" scope="row">
-                    {row.name}
-                  </TableCell>
-                  <TableCell align="center"><img src={`http://localhost:2000/${row.image}`} width="70" height="70" /></TableCell>
-                  <TableCell align="center">{row.desc}</TableCell>
-                  <TableCell align="center">{row.price}</TableCell>
-                  <TableCell align="center">{row.discount}</TableCell>
-                  <TableCell align="center">
+                // row.name, row.desc, row.price, row.discount
+                // <TableRow key={row.name}>
+                //   <TableCell align="center" component="th" scope="row">
+                //     {row.name}
+                //   </TableCell>
+                //   <TableCell align="center"><img src={`http://localhost:2000/${row.image}`} width="70" height="70" /></TableCell>
+                //   <TableCell align="center">{row.desc}</TableCell>
+                //   <TableCell align="center">{row.price}</TableCell>
+                //   <TableCell align="center">{row.discount}</TableCell>
+                //   <TableCell align="center">
+                //     <Button
+                //       className="button_style"
+                //       variant="outlined"
+                //       color="primary"
+                //       size="small"
+                //       onClick={(e) => this.handleProductEditOpen(row)}
+                //     >
+                //       Edit
+                //   </Button>
+                //     <Button
+                //       className="button_style"
+                //       variant="outlined"
+                //       color="secondary"
+                //       size="small"
+                //       onClick={(e) => this.deleteProduct(row._id)}
+                //     >
+                //       Delete
+                //   </Button>
+                //   </TableCell>
+                // </TableRow>
+                <TableCell key={row.name} align="center" component="th" scope="row" sx={{ width: "33%" }}>
+                  <Card>
+                    <Box sx={{ display: 'flex' }} padding={"30px"}>
+                      {/* <Avatar variant="rounded" src="avatar1.jpg" /> */}
+                      <img src={`http://localhost:2000/${row.image}`} height="200px" variant="rounded" objectFit="contain" width="100%" />
+                      <Box sx={{ display: 'flex' }}>
+                        <Typography fontWeight={700}>{row.name}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          <LocationOn sx={{ color: "0xf0f0f0" }} />{row.desc}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Divider />
+                    <Box padding={"30px"}>
                     <Button
                       className="button_style"
                       variant="outlined"
                       color="primary"
                       size="small"
+                      disabled={!this.state.isIssuer}
                       onClick={(e) => this.handleProductEditOpen(row)}
                     >
                       Edit
-                  </Button>
+                    </Button>
                     <Button
                       className="button_style"
                       variant="outlined"
                       color="secondary"
                       size="small"
+                      disabled={!this.state.isIssuer}
                       onClick={(e) => this.deleteProduct(row._id)}
                     >
                       Delete
-                  </Button>
-                  </TableCell>
-                </TableRow>
+                    </Button>
+                    <Button
+                      className="button_style"
+                      variant="contained"
+                      color="secondary"
+                      size="small"
+                      onClick={async() => this.handleAddingVP(row)}
+                    >
+                      Rent Car
+                    </Button>
+                    </Box>
+                  </Card>
+                </TableCell>
               ))}
             </TableBody>
           </Table>

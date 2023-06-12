@@ -5,6 +5,8 @@ var {createSignedVerifiableCredential} = require("../iota/verifiableCredentials"
 var {createVerifiablePresentation} = require("../iota/verifiablePresentation")
 var {checkVerifiablePresentation} = require("../iota/checkVerifiablePresentation")
 var {loadDID} = require("../iota/loadDid")
+const fs = require('fs')
+import * as path from 'path'
 
 async function asyncCreateDID(name, password) {
     // Create DID.
@@ -215,21 +217,31 @@ function createVPRoute(req, res) {
         if (req.body && req.body.user) {
             console.log("Create VP")
             var holder = req.body.user
-
-            asyncCreateVP(holder, holder, holder+"-credential.json", "key-1", "xyz123")
-            .then(() => {
-                res.json({
-                    message: 'Create VP Successfully.',
-                    status: true
-                });
-            })
-            .catch((err) => {
-                console.log(err);
+            var filename = path.join('credentials', holder+"-credential.json")
+            console.log(filename)
+            if(fs.existsSync(filename)){
+                asyncCreateVP(holder, holder, holder+"-credential.json", "key-1", "xyz123")
+                .then(() => {
+                    res.json({
+                        message: 'Create VP Successfully.',
+                        status: true
+                    });
+                })
+                .catch((err) => {
+                    console.log(err);
+                    res.status(400).json({
+                        errorMessage: 'Something went wrong!',
+                        status: false
+                    });
+                })
+            }
+            else{
+                console.log("VC not found!")
                 res.status(400).json({
-                    errorMessage: 'Something went wrong!',
+                    errorMessage: "VC not found!",
                     status: false
                 });
-            })
+            }
         }
     } catch (e) {
         console.log("Creating VP Error");
